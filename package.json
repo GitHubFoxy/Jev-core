@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22.16" },
-  "bin": { "pag": "./src/cli.ts" },
+  "engines": {
+    "node": ">=22.16"
+  },
   "scripts": {
-    "start": "node --experimental-strip-types src/cli.ts serve",
-    "pag": "node --experimental-strip-types src/cli.ts",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "start": "node src/front.ts",
+    "test": "node --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm test"
   },

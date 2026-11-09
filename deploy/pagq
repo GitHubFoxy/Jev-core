@@ -1,0 +1,4 @@
+#!/bin/sh
+# Read-only SQL against pag.requests. SQL on stdin or as $1.
+[ -n "$1" ] && SQL="$1" || SQL=$(cat)
+exec docker exec pag-clickhouse clickhouse-client -u agent --password "$(cat $HOME/pag/cpa/secrets/ch-agent.pass)" -d pag -q "$SQL"

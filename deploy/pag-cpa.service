@@ -1,0 +1,9 @@
+[Unit]
+Description=PAG CLIProxyAPI
+After=network-online.target
+[Service]
+WorkingDirectory=%h/pag/cpa
+ExecStart=%h/pag/cpa/cli-proxy-api --config %h/pag/cpa/config.yaml
+Restart=on-failure
+[Install]
+WantedBy=default.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=PAG front (capture + decisions)
+After=network-online.target pag-cpa.service
+[Service]
+WorkingDirectory=%h/pag/front
+Environment=PAG_FRONT_CONFIG=%h/pag/front/config.json
+ExecStart=/usr/bin/node src/front.ts
+Restart=on-failure
+[Install]
+WantedBy=default.target

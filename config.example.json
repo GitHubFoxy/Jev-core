@@ -1,0 +1,20 @@
+{
+  "listen": { "host": "100.94.76.14", "port": 8317 },
+  "upstream": "http://127.0.0.1:8318",
+  "clientKeyFile": "/home/coder/pag/cpa/secrets/client.key",
+  "clickhouse": { "url": "http://127.0.0.1:8123", "user": "front", "passFile": "/home/coder/pag/cpa/secrets/ch-front.pass" },
+  "decisions": {
+    "alias": "decision",
+    "routes": [
+      { "name": "cloudflare-clef-flash", "protocol": "systemone", "model": "clef-flash", "omitModel": true,
+        "url": "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/ai/run/@cf/cloudflare/clef-flash",
+        "keyFile": "/home/coder/pag/cpa/secrets/cloudflare.token" },
+      { "name": "vercel-laya", "protocol": "openai", "model": "convaiinnovations/laya",
+        "url": "https://ai-gateway.vercel.sh/v1/decisions",
+        "keyFile": "/home/coder/pag/cpa/secrets/vercel.key" },
+      { "name": "openrouter-jev", "protocol": "systemone", "model": "typesafe/jev-1.14", "enabled": false,
+        "url": "https://openrouter.ai/api/alpha/decisions",
+        "keyFile": "/home/coder/pag/cpa/secrets/openrouter.key" }
+    ]
+  }
+}

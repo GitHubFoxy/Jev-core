@@ -1,0 +1,34 @@
+management:
+  disable-auto-update-panel: true
+  secret-key: "<bcrypt hash or plain secret for the management panel>"
+server:
+  host: "127.0.0.1"
+  port: 8318
+access:
+  api-keys:
+    - "<client key, same as secrets/client.key>"
+routing:
+  strategy: "round-robin"
+api-keys:
+  claude:
+    - name: 4router
+      base-url: "https://4router.net"
+      keys:
+        - api-key: "<key>"
+  openai-compatibility:
+    - name: opencode-zen
+      base-url: "https://opencode.ai/zen/v1"
+      keys:
+        - api-key: "<key>"
+      models:
+        - {name: big-pickle, alias: opencode-free}
+        - {name: beam-free, alias: opencode-free}
+        - {name: mimo-v2.6-flash-free, alias: opencode-free}
+        - {name: deepseek-v4.1-flash-free, alias: opencode-free}
+        - {name: glm-5.3-flash-free, alias: opencode-free}
+
+observability:
+  logs:
+    logging-to-file: true
+    logs-max-total-size-mb: 500
+    request-log: false

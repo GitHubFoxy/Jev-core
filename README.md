@@ -1,30 +1,38 @@
 # Personal AI Gateway (PAG)
 
-Minimal, self-hosted **AI API router**: one gateway URL, one API key, stable virtual model aliases, ordered provider fallback, CLI configuration. TypeScript + Node.js 22.16+ with **zero production dependencies**. No dashboard, database, or LiteLLM.
+All LLM traffic goes through one place on `omarchy` (reachable over Tailscale only), and every request is stored in ClickHouse so agents can analyze how other agents behave.
 
-**Implementation:** `src/`; [quick start](docs/quickstart.md); [Decisions API setup](docs/decisions.md); [project roadmap](PLAN.md).
+```
+agents ──► pag-front :8317 ──► CLIProxyAPI 127.0.0.1:8318 ──► OpenAI (Codex OAuth), 4router (Claude), OpenCode, …
+              │   └─ /v1/decisions (own routes: Cloudflare Clef, Vercel Laya, OpenRouter Jev)
+              └─► ClickHouse pag.requests (full request/response bodies)
+```
 
-### Features (v0.1)
+- **CLIProxyAPI** (upstream binary, not forked) does providers, OAuth, account pools and the management UI.
+- **pag-front** (`src/front.ts`, Node, no dependencies) records every POST and serves `/v1/decisions`, which CLIProxyAPI does not have. Credentials are masked in stored headers; bodies are stored as received.
+- **Decisions** (`src/decisions.ts`) accepts System One (`state` + `questions{}`) and OpenAI-native (`input` + `questions[]`) requests and rotates between configured providers with fallback. See [docs/decisions.md](docs/decisions.md).
+- **Querying**: the `pag-query` skill (`~/dotfiles/skills/pag-query`) runs read-only SQL via `ssh omarchy ~/pag/bin/pagq`.
 
-- `POST /v1/responses` — forwards OpenAI Responses-compatible requests to a compatible model pool.
-- `POST /v1/chat/completions` — forwards compatible chat completions requests; translates non-streaming text requests for ChatGPT OAuth.
-- `POST /v1/decisions` — accepts both System One `state + questions{}` and OpenAI-native `input + questions[]`; translates and validates provider responses.
-- `GET /v1/models` — configured virtual aliases.
-- Ordered fallback on 429, 5xx, network failures, cooldown and bounded timeout.
-- SSE streaming pass-through (fallback **before** response begins only), preservation of tool payloads.
-- Local `pag` CLI for provider keys, route selection, priority and health/config inspection.
-- OpenCode Go and OpenRouter API-key examples, plus official ChatGPT open-source OAuth; generic compatible provider endpoints.
+## Files
 
-~~~bash
-npm install
-npm run pag -- init
-npm run pag -- auth add opencode-go --key-stdin < /path/to/keyfile
-npm run pag -- route set coding llm opencode-go:gpt-6-luna
-npm start
-~~~
+| Path | Purpose |
+|---|---|
+| `schema.sql` | ClickHouse table |
+| `config.example.json` | front config (copy to `~/pag/front/config.json` on omarchy) |
+| `src/front.ts`, `src/capture.ts`, `src/decisions.ts` | the service |
+| `deploy/` | systemd units, `pagq` (read-only SQL wrapper), CLIProxyAPI config with placeholders |
 
-Use a stable alias `coding` with the generated PAG key at `http://127.0.0.1:4000/v1`. [Detailed steps and important provider restrictions](docs/quickstart.md).
+## Deploy (omarchy)
 
-**Subscription support:** `npm run pag -- auth login openai` starts OpenAI's official interactive open-source OAuth flow. PAG uses **streamed, unstored Responses API** upstream and translates supported non-streaming text Chat Completions requests. Eligibility and actual quota are provider-controlled; no live account is used in CI. Do not pass ChatGPT web session tokens to PAG. OpenCode Go requires coding-agent use and should receive stable `x-opencode-session` values.
+```sh
+npm run check
+scp src/*.ts omarchy:~/pag/front/src/ && ssh omarchy 'systemctl --user restart pag-front'
+```
 
-See [#1 MVP](https://github.com/GitHubFoxy/Jev-core/issues/1) and [#3 future image/audio/video](https://github.com/GitHubFoxy/Jev-core/issues/3). Original Decision provider research is in [docs/jev-model-allowances.md](docs/jev-model-allowances.md).
+Services on omarchy (systemd user units): `pag-cpa` (CLIProxyAPI, `~/pag/cpa`), `pag-front` (`~/pag/front`); ClickHouse runs in Docker as `pag-clickhouse` with data in `~/pag/clickhouse`. Secrets live in `~/pag/cpa/secrets/` (mode 600).
+
+## Point an agent at it
+
+Claude Code: set in `settings.json` `env`: `ANTHROPIC_BASE_URL=http://omarchy.tail089ef.ts.net:8317` and `ANTHROPIC_AUTH_TOKEN=<client key>`. Use `claude-*` model names as usual; requests reach 4router with the original Claude Code headers.
+
+Known limits: rows are queued in memory and flushed every 2 s, so a crash can lose the last few seconds; stored bodies are capped at 32 MB each.
